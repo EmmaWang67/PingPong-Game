@@ -1,80 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 
-<!-- Mobile fullscreen behaviour -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Proper iPhone scaling and fullscreen -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>Ping Pong Game</title>
+<title>Table Tennis Game</title>
 
 <style>
-
-body{
+html,body{
 margin:0;
-background:#0b3d2e;
-font-family:Arial, Helvetica, sans-serif;
+padding:0;
+background:#111;
 color:white;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
+font-family:Arial;
+height:100%;
 overflow:hidden;
 }
 
-#container{
+body{
 display:flex;
 flex-direction:column;
 align-items:center;
-gap:10px;
-width:100%;
+justify-content:flex-start;
+}
+
+h1{
+margin:8px 0 4px 0;
+font-size:22px;
+}
+
+#controls{
+margin:4px;
+text-align:center;
+font-size:14px;
+}
+
+#gameContainer{
+flex:1;
+width:100vw;
+display:flex;
+justify-content:center;
+align-items:center;
+padding-bottom:env(safe-area-inset-bottom);
 }
 
 canvas{
 background:#0f5132;
-border:4px solid white;
-touch-action:none;
-width:95vw;
-height:calc(95vw * 0.56);
-max-width:900px;
-max-height:500px;
-}
+border:3px solid white;
 
-#controls{
-display:flex;
-gap:12px;
-align-items:center;
-flex-wrap:wrap;
-justify-content:center;
-font-size:14px;
-}
+/* Perfect phone fit */
+width:100vw;
+height:calc(100vw * 0.56);
+max-height:75vh;
+max-width:1000px;
 
-select,input,button{
-padding:6px 8px;
-border-radius:6px;
-border:none;
-font-size:14px;
-}
-
-button{
-cursor:pointer;
 }
 
 #scoreboard{
-width:95vw;
-max-width:900px;
-display:flex;
-justify-content:space-between;
-font-size:20px;
-margin-top:5px;
+margin:6px;
+font-size:18px;
 }
 
-#help{
-font-size:13px;
-opacity:0.85;
-text-align:center;
+button,select,input{
+font-size:14px;
+margin:2px;
 }
 
 </style>
@@ -82,250 +75,202 @@ text-align:center;
 
 <body>
 
-<div id="container">
+<h1>🏓 Table Tennis</h1>
 
 <div id="controls">
-
-<label>Difficulty:</label>
+Difficulty:
 <select id="difficulty">
-<option value="2">Easy</option>
-<option value="4" selected>Medium</option>
+<option value="3">Easy</option>
+<option value="5" selected>Medium</option>
 <option value="7">Hard</option>
 </select>
 
-<label>Points to Win:</label>
-<input id="maxScore" type="number" value="5" min="1" style="width:60px">
+Points to win:
+<input id="winScore" type="number" value="5" min="1" max="20">
 
-<button onclick="startGame()">Restart</button>
-
+<button onclick="startGame()">Start Game</button>
+<button onclick="restartGame()">Restart</button>
 <button onclick="enterFullscreen()">Fullscreen</button>
-
 </div>
 
-<canvas id="game" width="900" height="500"></canvas>
+<div id="gameContainer">
+<canvas id="game"></canvas>
+</div>
 
 <div id="scoreboard">
-<div>Player: <span id="playerScore">0</span></div>
-<div>Computer: <span id="cpuScore">0</span></div>
-</div>
-
-<div id="help">
-Desktop: ↑ ↓ keys &nbsp; | &nbsp; Mobile: drag finger &nbsp; | &nbsp; Tap Fullscreen for app-like play
-</div>
-
+Player: <span id="playerScore">0</span>
+ |
+Computer: <span id="computerScore">0</span>
 </div>
 
 <script>
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+function resizeCanvas(){
+canvas.width=window.innerWidth
+canvas.height=canvas.width*0.56
 
-const paddleWidth = 10;
-const paddleHeight = 90;
-
-let aiSpeed = 4;
-let winningScore = 5;
-let gameOver = false;
-
-const player = { x:10, y:200, dy:0, score:0 };
-const cpu = { x:canvas.width-20, y:200, score:0 };
-
-const ball = {
-    x:canvas.width/2,
-    y:canvas.height/2,
-    dx:5,
-    dy:3,
-    r:8
-};
-
-function enterFullscreen(){
-
-let elem = document.documentElement;
-
-if(elem.requestFullscreen){
-    elem.requestFullscreen();
+if(canvas.height>window.innerHeight*0.75){
+canvas.height=window.innerHeight*0.75
+canvas.width=canvas.height/0.56
 }
-else if(elem.webkitRequestFullscreen){
-    elem.webkitRequestFullscreen();
 }
 
-}
+resizeCanvas()
+window.addEventListener("resize",resizeCanvas)
+
+let paddleHeight=80
+let paddleWidth=10
+
+let playerY=canvas.height/2
+let computerY=canvas.height/2
+
+let ballX=canvas.width/2
+let ballY=canvas.height/2
+let ballSpeedX=4
+let ballSpeedY=3
+
+let playerScore=0
+let computerScore=0
+let aiSpeed=5
+let winScore=5
+let gameRunning=false
 
 function startGame(){
+aiSpeed=parseInt(document.getElementById("difficulty").value)
+winScore=parseInt(document.getElementById("winScore").value)
+playerScore=0
+computerScore=0
+updateScore()
+resetBall()
+gameRunning=true
+}
 
-aiSpeed = parseInt(document.getElementById("difficulty").value);
-winningScore = parseInt(document.getElementById("maxScore").value);
+function restartGame(){
+startGame()
+}
 
-player.score = 0;
-cpu.score = 0;
+function resetBall(){
+ballX=canvas.width/2
+ballY=canvas.height/2
+ballSpeedX*=-1
+ballSpeedY=(Math.random()*4)-2
+}
 
-updateScore();
-
-gameOver = false;
-
-resetBall();
-
+function updateScore(){
+document.getElementById("playerScore").textContent=playerScore
+document.getElementById("computerScore").textContent=computerScore
 }
 
 function drawRect(x,y,w,h){
-ctx.fillStyle="white";
-ctx.fillRect(x,y,w,h);
+ctx.fillStyle="white"
+ctx.fillRect(x,y,w,h)
 }
 
 function drawBall(){
-ctx.beginPath();
-ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-ctx.fillStyle="white";
-ctx.fill();
+ctx.beginPath()
+ctx.arc(ballX,ballY,8,0,Math.PI*2)
+ctx.fillStyle="white"
+ctx.fill()
 }
 
 function drawNet(){
 for(let i=0;i<canvas.height;i+=20){
-ctx.fillRect(canvas.width/2-1,i,2,10);
+ctx.fillRect(canvas.width/2-1,i,2,10)
 }
-}
-
-function resetBall(){
-
-ball.x = canvas.width/2;
-ball.y = canvas.height/2;
-
-ball.dx = Math.random()>0.5 ? 5 : -5;
-ball.dy = (Math.random()*4)-2;
-
-}
-
-function updateScore(){
-
-document.getElementById("playerScore").innerText = player.score;
-document.getElementById("cpuScore").innerText = cpu.score;
-
-}
-
-function checkWinner(){
-
-if(player.score >= winningScore){
-alert("You Win! 🎉");
-gameOver = true;
-}
-
-if(cpu.score >= winningScore){
-alert("Computer Wins! 🤖");
-gameOver = true;
-}
-
 }
 
 function update(){
+if(!gameRunning)return
 
-if(gameOver) return;
+ballX+=ballSpeedX
+ballY+=ballSpeedY
 
-player.y += player.dy;
+if(ballY<0||ballY>canvas.height)ballSpeedY*=-1
 
-if(player.y < 0) player.y = 0;
-if(player.y + paddleHeight > canvas.height)
-player.y = canvas.height - paddleHeight;
-
-let cpuCenter = cpu.y + paddleHeight/2;
-
-if(cpuCenter < ball.y) cpu.y += aiSpeed;
-else cpu.y -= aiSpeed;
-
-ball.x += ball.dx;
-ball.y += ball.dy;
-
-if(ball.y < 0 || ball.y > canvas.height) ball.dy *= -1;
-
-if(ball.x < player.x + paddleWidth &&
-   ball.y > player.y &&
-   ball.y < player.y + paddleHeight){
-
-   let collidePoint = ball.y - (player.y + paddleHeight/2);
-   collidePoint = collidePoint / (paddleHeight/2);
-
-   ball.dy = collidePoint * 6;
-   ball.dx *= -1;
+if(ballX<20){
+if(ballY>playerY && ballY<playerY+paddleHeight){
+ballSpeedX*=-1
+let deltaY=ballY-(playerY+paddleHeight/2)
+ballSpeedY=deltaY*0.25
+}else{
+computerScore++
+updateScore()
+checkWin()
+resetBall()
+}
 }
 
-if(ball.x > cpu.x &&
-   ball.y > cpu.y &&
-   ball.y < cpu.y + paddleHeight){
-
-   let collidePoint = ball.y - (cpu.y + paddleHeight/2);
-   collidePoint = collidePoint / (paddleHeight/2);
-
-   ball.dy = collidePoint * 6;
-   ball.dx *= -1;
+if(ballX>canvas.width-20){
+if(ballY>computerY && ballY<computerY+paddleHeight){
+ballSpeedX*=-1
+let deltaY=ballY-(computerY+paddleHeight/2)
+ballSpeedY=deltaY*0.25
+}else{
+playerScore++
+updateScore()
+checkWin()
+resetBall()
+}
 }
 
-if(ball.x < 0){
-
-cpu.score++;
-updateScore();
-checkWinner();
-resetBall();
-
+let computerCenter=computerY+paddleHeight/2
+if(computerCenter<ballY)computerY+=aiSpeed
+else computerY-=aiSpeed
 }
 
-if(ball.x > canvas.width){
-
-player.score++;
-updateScore();
-checkWinner();
-resetBall();
-
+function checkWin(){
+if(playerScore>=winScore){
+alert("You Win! 🎉")
+gameRunning=false
 }
-
+if(computerScore>=winScore){
+alert("Computer Wins! 🤖")
+gameRunning=false
+}
 }
 
 function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height)
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
+drawNet()
 
-drawNet();
+drawRect(10,playerY,paddleWidth,paddleHeight)
+drawRect(canvas.width-20,computerY,paddleWidth,paddleHeight)
 
-drawRect(player.x,player.y,paddleWidth,paddleHeight);
-drawRect(cpu.x,cpu.y,paddleWidth,paddleHeight);
-
-drawBall();
-
+drawBall()
 }
 
 function gameLoop(){
-update();
-draw();
-requestAnimationFrame(gameLoop);
+update()
+draw()
+requestAnimationFrame(gameLoop)
 }
 
-/* Desktop keyboard */
-window.addEventListener("keydown",e=>{
-if(e.key==="ArrowUp") player.dy=-6;
-if(e.key==="ArrowDown") player.dy=6;
-});
+gameLoop()
 
-window.addEventListener("keyup",e=>{
-if(e.key==="ArrowUp"||e.key==="ArrowDown") player.dy=0;
-});
+// keyboard controls
 
-/* Mobile touch */
-canvas.addEventListener("touchmove",function(e){
+document.addEventListener("keydown",e=>{
+if(e.key==="ArrowUp")playerY-=30
+if(e.key==="ArrowDown")playerY+=30
+})
 
-let rect=canvas.getBoundingClientRect();
-let touch=e.touches[0];
-let touchY=touch.clientY-rect.top;
+// touch controls
 
-player.y=touchY-paddleHeight/2;
+canvas.addEventListener("touchmove",e=>{
+let rect=canvas.getBoundingClientRect()
+let touchY=e.touches[0].clientY-rect.top
+playerY=touchY-paddleHeight/2
+})
 
-if(player.y<0) player.y=0;
-if(player.y+paddleHeight>canvas.height)
-player.y=canvas.height-paddleHeight;
-
-e.preventDefault();
-
-},{passive:false});
-
-startGame();
-gameLoop();
+function enterFullscreen(){
+let elem=document.documentElement
+if(elem.requestFullscreen){
+ elem.requestFullscreen()
+}
+}
 
 </script>
 
