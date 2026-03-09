@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Table Tennis Game</title>
 <style>
+
 body{
 margin:0;
 background:#0b3d2e;
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 color:white;
 display:flex;
 justify-content:center;
@@ -21,12 +22,18 @@ display:flex;
 flex-direction:column;
 align-items:center;
 gap:10px;
+width:100%;
 }
 
+/* Responsive canvas for phones */
 canvas{
 background:#0f5132;
 border:4px solid white;
 touch-action:none;
+width:95vw;
+height:calc(95vw * 0.56);
+max-width:800px;
+max-height:450px;
 }
 
 #controls{
@@ -39,14 +46,19 @@ justify-content:center;
 }
 
 select,input,button{
-padding:6px;
+padding:6px 8px;
 border-radius:5px;
 border:none;
+font-size:14px;
+}
+
+button{
+cursor:pointer;
 }
 
 #scoreboard{
-width:800px;
-max-width:90vw;
+width:95vw;
+max-width:800px;
 display:flex;
 justify-content:space-between;
 font-size:20px;
@@ -56,7 +68,10 @@ margin-top:5px;
 #share{
 margin-top:5px;
 font-size:14px;
+opacity:0.9;
+text-align:center;
 }
+
 </style>
 </head>
 <body>
@@ -86,7 +101,7 @@ font-size:14px;
 <div>Computer: <span id="cpuScore">0</span></div>
 </div>
 
-<div id="share">Use ↑ ↓ keys on desktop or drag finger on mobile</div>
+<div id="share">Desktop: ↑ ↓ keys &nbsp;&nbsp; | &nbsp;&nbsp; Mobile: drag finger on screen</div>
 
 </div>
 
@@ -265,6 +280,7 @@ draw();
 requestAnimationFrame(gameLoop);
 }
 
+/* Keyboard control for desktop */
 window.addEventListener("keydown", e => {
 
 if(e.key === "ArrowUp") player.dy = -6;
@@ -279,6 +295,7 @@ player.dy = 0;
 
 });
 
+/* Touch control for phones */
 canvas.addEventListener("touchmove", function(e){
 
 let rect = canvas.getBoundingClientRect();
